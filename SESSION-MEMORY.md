@@ -65,18 +65,17 @@
 - YOLO 检测器、Socket.IO 网关、沙箱管理器均初始化成功
 - 日志输出正常
 
-### ⚠️ 步骤 10：前端加载问题（进行中）
-- 浏览器访问 `localhost:3000` 报错：`ENOENT: no such file or directory, stat 'D:\WeavesAI\weavesai-service\server\_core\public\index.html'`
+### ✅ 步骤 10：前端加载问题（已修复）
+- 之前浏览器访问 `localhost:3000` 报错：`ENOENT: no such file or directory, stat 'D:\WeavesAI\weavesai-service\server\_core\public\index.html'`
 - 原因：CMD 中 `set NODE_ENV=development &&`（development 后有空格）导致 NODE_ENV 实际值为 `"development "`，Vite 开发模式条件判断失败，回退到静态文件模式
-- **解决方法**：确保 `set NODE_ENV=development&&`（无空格）
+- **已修复**：使用无空格命令 `set NODE_ENV=development&&` 重新启动后，Vite 开发模式正常激活，前端成功加载
 
 ## 三、待完成的任务
 
-1. **修复 Vite 前端** — 用无空格的命令重新启动，确保 Vite HMR 正常工作
-2. **配置 LLM 模型** — 用户尚未决定用哪个 LLM 服务商，需要在 Web UI 设置页面配置 Provider + API Key
-3. **可选：部署 GUIDevice** — 桌面自动化组件（仅 Windows）
-4. **可选：部署 WSL2 沙箱** — 隔离执行环境
-5. **可选：注册 Windows 服务** — 开机自启
+1. **配置 LLM 模型**（必做） — 用户尚未决定用哪个 LLM 服务商，需要在 Web UI 设置页面配置 Provider + API Key
+2. **可选：部署 GUIDevice** — 桌面自动化组件（仅 Windows）
+3. **可选：部署 WSL2 沙箱** — 隔离执行环境
+4. **可选：注册 Windows 服务** — 开机自启
 
 ## 四、项目关键信息
 
