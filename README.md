@@ -11,12 +11,12 @@
 
 ## 当前状态
 
-**部署进度：70%** — 构建完成，启动时遇到 `lib/worker.js` 缺失问题，需要继续排查。
+**部署进度：85%** — 服务已成功启动，Web UI 出现前端加载问题（Vite 开发模式未正确激活），正在修复。
 
 ### 下一个 AI 需要做的
 
 1. 阅读 `SESSION-MEMORY.md` 了解完整上下文
-2. 帮助用户解决启动问题（尝试 `pnpm dev` 或排查 worker.js）
+2. 修复 Vite 开发模式激活问题（CMD 中 `set NODE_ENV=development&&` 不能有空格）
 3. 启动成功后，指导用户在 Web UI 配置 LLM API Key
 4. 可选：部署 GUIDevice、WSL2 沙箱、Windows 服务
 
