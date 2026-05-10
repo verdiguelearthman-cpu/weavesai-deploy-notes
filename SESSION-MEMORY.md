@@ -49,70 +49,65 @@
   - `server/db/connection.ts` 第 35、38 行
   - `server/db/migrations.ts` 第 21 行
   - `server/engine/yolo-detector.ts` 第 353 行
-- **注意**：不能用 PowerShell 的 `Set-Content` 替换，会破坏文件编码（反引号被吃掉）。应使用 VS Code/PyCharm 等编辑器的查找替换功能。
-- **替换范围**：仅限 `server/` 目录下的 `*.ts` 文件，不能替换 `node_modules` 中的文件。
 
 ### ✅ 步骤 8：解决启动入口问题
-- `npx tsx watch server/_core/index.ts` 无输出 — 原因是 `index.ts` 末尾的 `import.meta.url === file://...` 路径匹配在 Windows 上失败，`startWebServer()` 未被调用
-- 解决方法：直接调用导出函数绕过路径判断：
-  ```
-  set NODE_ENV=development&& node --import tsx -e "import('./server/_core/index.ts').then(m => m.startWebServer({ logger: console, version: '1.14' }))"
-  ```
-- **关键注意**：CMD 中 `set NODE_ENV=development&&` 后面不能有空格，否则 NODE_ENV 值会带空格，导致 Vite 开发模式不激活
+- `npx tsx watch server/_core/index.ts` 无输出 — 原因是 `index.ts` 末尾的 `import.meta.url === file://...` 路径匹配在 Windows 上失败
+- 解决方法：直接调用导出函数绕过路径判断
 
 ### ✅ 步骤 9：服务成功启动
 - 后端服务在 `http://localhost:3000/` 成功运行
 - YOLO 检测器、Socket.IO 网关、沙箱管理器均初始化成功
-- 日志输出正常
 
-### ✅ 步骤 10：前端加载问题（已修复）
-- 之前浏览器访问 `localhost:3000` 报错：`ENOENT: no such file or directory, stat 'D:\WeavesAI\weavesai-service\server\_core\public\index.html'`
-- 原因：CMD 中 `set NODE_ENV=development &&`（development 后有空格）导致 NODE_ENV 实际值为 `"development "`，Vite 开发模式条件判断失败，回退到静态文件模式
-- **已修复**：使用无空格命令 `set NODE_ENV=development&&` 重新启动后，Vite 开发模式正常激活，前端成功加载
+### ✅ 步骤 10：修复 Vite 前端加载
+- CMD 中 `set NODE_ENV=development &&` 尾部空格导致 Vite 开发模式未激活
+- 改为 `set NODE_ENV=development&&`（无空格）后修复
 
-## 三、待完成的任务
+### ✅ 步骤 11：创建 chat-agent.json
+- 报错 `ENOENT: no such file or directory, open '...\config\chat-agent.json'`
+- 手动创建 `server\_core\config\chat-agent.json`
 
-1. **配置 LLM 模型**（必做） — 用户尚未决定用哪个 LLM 服务商，需要在 Web UI 设置页面配置 Provider + API Key
-2. **可选：部署 GUIDevice** — 桌面自动化组件（仅 Windows）
-3. **可选：部署 WSL2 沙箱** — 隔离执行环境
-4. **可选：注册 Windows 服务** — 开机自启
+### ✅ 步骤 12：配置 DeepSeek R1 模型
+- 供应商：deepseek，Base URL：`https://api.deepseek.com`
+- 令牌：`sk-ec8ef...`（已设为默认）
+- 模型绑定：协议 OpenAI 兼容，API Model ID `deepseek-reasoner`
+- thinkModelOverrides 全部填 `deepseek-reasoner`（系统不允许留空）
 
-## 四、项目关键信息
+### ✅ 步骤 13：对话测试成功
+- 发送 "1+1等于几"，收到正确回复 "1 + 1 等于 2。"
+- 任务已完成，部署 100% 成功
 
-### 仓库结构
-- **源码**：https://github.com/WeavesAI/WeavesAI （CC BY-NC-SA 4.0，禁止商用）
-- **主语言**：TypeScript 97.3%
-- **总提交**：2,588
-- **Release**：45 个（最新 Hot Update v2.0.60）
+## 三、已知问题
+
+1. **Agent 自动打开谷歌浏览器** — 当问开放性问题时，Agent 会通过宿主机访问权限打开 Chrome 搜索。解决方法：在运行环境页面（`localhost:3000/runtime`）将"AI 访问宿主机"从"访问时授权"改为"禁止"
+
+## 四、可选后续任务
+
+1. **添加 DeepSeek-V3 模型** — API Model ID 填 `deepseek-chat`，速度更快、更便宜
+2. **部署 GUIDevice** — 桌面自动化组件（仅 Windows）
+3. **部署 WSL2 沙箱** — 隔离执行环境
+4. **注册 Windows 服务** — 开机自启
+
+## 五、项目关键信息
 
 ### 技术栈
 - **前端**：React 19 + Vite 7 + TailwindCSS 4 + Radix UI
-- **后端**：Express + tRPC（所有 API 通过 `/api/trpc`，无 REST 路由）
+- **后端**：Express + tRPC（所有 API 通过 `/api/trpc`）
 - **数据库**：SQLite（better-sqlite3） + Drizzle ORM
 - **实时通信**：Socket.IO（WebSocket）
-- **日志**：Pino + pino-roll（滚动日志文件）
-- **认证**：bcryptjs + JWT (jose) + Cookie sessions
 - **LLM**：支持 Anthropic 原生协议 + OpenAI 原生协议 + XML 协议
 
 ### 启动命令（正确写法）
 ```bash
-# Windows CMD 中启动开发模式（注意 development 和 && 之间无空格）
+# Windows CMD（注意 development 和 && 之间无空格）
 set NODE_ENV=development&& node --import tsx -e "import('./server/_core/index.ts').then(m => m.startWebServer({ logger: console, version: '1.14' }))"
 ```
 
 ### 踩过的坑总结
 1. **__dirname 不可用**：Node.js v24 + tsx 以 ESM 模式运行，需要用 `import.meta.dirname` 替代
-2. **PowerShell Set-Content 破坏编码**：PowerShell 的反引号是转义符，会吞掉 JS 模板字符串的反引号，建议用编辑器替换
+2. **PowerShell Set-Content 破坏编码**：PowerShell 的反引号是转义符，会吞掉 JS 模板字符串的反引号
 3. **tsx watch 无输出**：`import.meta.url` 路径匹配在 Windows 上失败，需要直接调用 `startWebServer()`
 4. **CMD set 变量尾部空格**：`set VAR=value &&` 会在 value 后加空格，必须写成 `set VAR=value&&`
-5. **pnpm dev 不兼容 Windows CMD**：`NODE_ENV=development tsx watch ...` 是 Linux 语法，Windows 需要分开写
-
-### .env 配置说明
-```ini
-DATABASE_PATH=./data/weavesai.db     # SQLite 路径
-JWT_SECRET=<必填>                     # JWT 签名密钥
-REDIS_URL=                            # 可选，多进程时需要
-DEBUG_CONSOLE_TOKEN=                  # 可选，启用调试控制台
-E2B_API_URL=                          # 可选，沙箱服务器地址
-OSS_ACCESS_KEY_ID=                    # 可选，阿里云 OSS
-```
+5. **pnpm dev 不兼容 Windows CMD**：`NODE_ENV=development tsx watch ...` 是 Linux 语法
+6. **chat-agent.json 缺失**：需要手动创建 `server\_core\config\chat-agent.json`
+7. **模型绑定 thinkModelOverrides 不能留空**：系统校验要求字符串类型，全部填 `deepseek-reasoner`
+8. **令牌需设为默认**：供应商令牌必须点"设为默认"，否则模型绑定中"使用供应商默认令牌"找不到可用令牌
