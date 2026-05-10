@@ -11,13 +11,26 @@
 
 ## 当前状态
 
-**部署进度：90%** — 核心服务和前端均已成功启动运行，剩余配置 LLM API Key 即可使用。
+**部署进度：100%** — 前后端服务均已成功运行，DeepSeek R1 模型对接完成，平台可正常使用。
 
-### 下一个 AI 需要做的
+### 已完成
+- 环境准备、仓库克隆、依赖安装
+- 数据库生成、环境变量配置、项目构建
+- ESM 兼容性修复（__dirname -> import.meta.dirname）
+- 启动入口修复（Windows 路径匹配问题）
+- Vite 前端加载修复（CMD set 空格问题）
+- chat-agent.json 配置文件创建
+- DeepSeek R1 模型配置（供应商 + 令牌 + 模型绑定）
+- 对话测试通过
 
-1. 阅读 `SESSION-MEMORY.md` 了解完整上下文
-2. 指导用户在 Web UI 设置页面配置 LLM Provider + API Key
-3. 可选：部署 GUIDevice、WSL2 沙箱、Windows 服务
+### 已知问题
+- Agent 会通过宿主机访问权限自动打开谷歌浏览器搜索，可在运行环境页面将"AI 访问宿主机"设为"禁止"来解决
+
+### 可选后续任务
+- 部署 GUIDevice（桌面自动化）
+- 部署 WSL2 沙箱（隔离执行环境）
+- 注册 Windows 服务（开机自启）
+- 添加 DeepSeek-V3（deepseek-chat）模型，速度更快
 
 ### 用户环境速查
 - Windows 11, Node.js v24.13.1, pnpm 10.29.3
