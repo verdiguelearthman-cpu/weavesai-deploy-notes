@@ -41,29 +41,38 @@
 - `pnpm build` 成功
 - 前端（Vite）构建 16.81s，输出到 `dist/public/`
 - 后端（esbuild）构建 1033ms，输出 `dist/_core/index.js` 和 `dist/entry/service-entry.js`
-- 构建时有 6 个 esbuild WARNING（未实现的 DB 函数引用），不影响运行
 
-### ❌ 步骤 7：启动服务（未完成 — 遇到问题）
+### ✅ 步骤 7：修复 __dirname ESM 兼容性问题
+- Node.js v24 以 ESM 模式运行，`__dirname` 不可用
+- 已修复 4 个文件，将 `__dirname` 替换为 `import.meta.dirname`：
+  - `server/_core/chat-agent-config.ts` 第 31 行
+  - `server/db/connection.ts` 第 35、38 行
+  - `server/db/migrations.ts` 第 21 行
+  - `server/engine/yolo-detector.ts` 第 353 行
+- **注意**：不能用 PowerShell 的 `Set-Content` 替换，会破坏文件编码（反引号被吃掉）。应使用 VS Code/PyCharm 等编辑器的查找替换功能。
+- **替换范围**：仅限 `server/` 目录下的 `*.ts` 文件，不能替换 `node_modules` 中的文件。
 
-**问题 1**：`node dist/index.js` — 文件不存在
-- 原因：构建输出路径是 `dist/_core/index.js`，不是 `dist/index.js`
+### ✅ 步骤 8：解决启动入口问题
+- `npx tsx watch server/_core/index.ts` 无输出 — 原因是 `index.ts` 末尾的 `import.meta.url === file://...` 路径匹配在 Windows 上失败，`startWebServer()` 未被调用
+- 解决方法：直接调用导出函数绕过路径判断：
+  ```
+  set NODE_ENV=development&& node --import tsx -e "import('./server/_core/index.ts').then(m => m.startWebServer({ logger: console, version: '1.14' }))"
+  ```
+- **关键注意**：CMD 中 `set NODE_ENV=development&&` 后面不能有空格，否则 NODE_ENV 值会带空格，导致 Vite 开发模式不激活
 
-**问题 2**：`node dist/_core/index.js` — worker.js 缺失
-```
-Error: Cannot find module 'D:\WeavesAI\weavesai-service\dist\_core\lib\worker.js'
-```
-- 原因分析：某个依赖（可能是 pino 日志相关）在运行时动态加载 worker 线程文件，但 esbuild 打包时没有包含这个文件
-- 仓库源码中没有 `server/lib/worker.ts`，CI 工作流中也没有额外的 worker 构建步骤
-- **这个文件可能是生产环境通过 CI 流水线额外生成的，开源版本缺失**
+### ✅ 步骤 9：服务成功启动
+- 后端服务在 `http://localhost:3000/` 成功运行
+- YOLO 检测器、Socket.IO 网关、沙箱管理器均初始化成功
+- 日志输出正常
 
-**待尝试的解决方案**：
-1. 用开发模式启动：`pnpm dev`（绕过 esbuild 打包，直接跑 TypeScript 源码）
-2. 如果开发模式也失败，检查 `pino-roll` 或 `pino` 的 worker 线程依赖
-3. 可能需要降级到 Node.js v20 LTS（v24 对 worker_threads 行为可能有变化）
+### ⚠️ 步骤 10：前端加载问题（进行中）
+- 浏览器访问 `localhost:3000` 报错：`ENOENT: no such file or directory, stat 'D:\WeavesAI\weavesai-service\server\_core\public\index.html'`
+- 原因：CMD 中 `set NODE_ENV=development &&`（development 后有空格）导致 NODE_ENV 实际值为 `"development "`，Vite 开发模式条件判断失败，回退到静态文件模式
+- **解决方法**：确保 `set NODE_ENV=development&&`（无空格）
 
 ## 三、待完成的任务
 
-1. **启动服务** — 尝试 `pnpm dev` 开发模式启动
+1. **修复 Vite 前端** — 用无空格的命令重新启动，确保 Vite HMR 正常工作
 2. **配置 LLM 模型** — 用户尚未决定用哪个 LLM 服务商，需要在 Web UI 设置页面配置 Provider + API Key
 3. **可选：部署 GUIDevice** — 桌面自动化组件（仅 Windows）
 4. **可选：部署 WSL2 沙箱** — 隔离执行环境
@@ -77,16 +86,6 @@ Error: Cannot find module 'D:\WeavesAI\weavesai-service\dist\_core\lib\worker.js
 - **总提交**：2,588
 - **Release**：45 个（最新 Hot Update v2.0.60）
 
-### 子模块
-| 目录 | 说明 |
-|------|------|
-| `weavesai-service` | 核心服务（Express + tRPC + React 前端 + SQLite） |
-| `guidevice` | 虚拟 KVM 设备（桌面自动化） |
-| `svc-wrapper` | Windows 服务包装器（C 语言） |
-| `setup` | Windows 安装器/更新器 |
-| `sandbox` | WSL2 Ubuntu 沙箱（Dockerfile） |
-| `core-docs` | 架构文档 |
-
 ### 技术栈
 - **前端**：React 19 + Vite 7 + TailwindCSS 4 + Radix UI
 - **后端**：Express + tRPC（所有 API 通过 `/api/trpc`，无 REST 路由）
@@ -96,33 +95,18 @@ Error: Cannot find module 'D:\WeavesAI\weavesai-service\dist\_core\lib\worker.js
 - **认证**：bcryptjs + JWT (jose) + Cookie sessions
 - **LLM**：支持 Anthropic 原生协议 + OpenAI 原生协议 + XML 协议
 
-### 重要发现
-- **开源版本没有用户系统**：无注册/登录/邀请码功能，本地部署直接可用
-- **官方托管版** (ai.weaves.cn) 有额外的闭源用户管理系统
-- **安装包分发**：通过阿里云 OSS（`weavesai.oss-cn-beijing.aliyuncs.com/releases/`）
-- **版本清单**：`https://weavesai.oss-cn-beijing.aliyuncs.com/releases/latest.json`
-- **预置 LLM 模型**：Claude Sonnet/Opus 4.6、GPT 5.4、GPT 5.4 Nano
-
-### 关键命令速查
+### 启动命令（正确写法）
 ```bash
-# 开发模式（热重载）
-pnpm dev
-
-# 生产构建
-pnpm build
-
-# 生成数据库
-pnpm db:push
-
-# 类型检查
-pnpm check
-
-# 生产启动（通过 PM2，端口 3001）
-pm2 start ecosystem.config.cjs
-
-# 远程调试
-DEBUG_HOST=http://<ip>:3000 npx tsx scripts/debug-cli.ts system
+# Windows CMD 中启动开发模式（注意 development 和 && 之间无空格）
+set NODE_ENV=development&& node --import tsx -e "import('./server/_core/index.ts').then(m => m.startWebServer({ logger: console, version: '1.14' }))"
 ```
+
+### 踩过的坑总结
+1. **__dirname 不可用**：Node.js v24 + tsx 以 ESM 模式运行，需要用 `import.meta.dirname` 替代
+2. **PowerShell Set-Content 破坏编码**：PowerShell 的反引号是转义符，会吞掉 JS 模板字符串的反引号，建议用编辑器替换
+3. **tsx watch 无输出**：`import.meta.url` 路径匹配在 Windows 上失败，需要直接调用 `startWebServer()`
+4. **CMD set 变量尾部空格**：`set VAR=value &&` 会在 value 后加空格，必须写成 `set VAR=value&&`
+5. **pnpm dev 不兼容 Windows CMD**：`NODE_ENV=development tsx watch ...` 是 Linux 语法，Windows 需要分开写
 
 ### .env 配置说明
 ```ini
